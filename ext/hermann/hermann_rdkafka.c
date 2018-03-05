@@ -422,12 +422,13 @@ static void *consumer_recv_msg(void *ptr)
 static VALUE consumer_consume_loop(VALUE self) {
 	HermannInstanceConfig* consumerConfig;
 	rd_kafka_message_t *msg;
+	unsigned int misses = 0;
 
 	Data_Get_Struct(self, HermannInstanceConfig, consumerConfig);
 
 	TRACER("\n");
 
-	while (consumerConfig->run) {
+	while (consumerConfig->run && misses < 10) {
 #if HAVE_RB_THREAD_BLOCKING_REGION && RUBY_API_VERSION_MAJOR < 2
 		msg = (rd_kafka_message_t *) rb_thread_blocking_region((rb_blocking_function_t *) consumer_recv_msg,
 				consumerConfig,
@@ -444,6 +445,9 @@ static VALUE consumer_consume_loop(VALUE self) {
 
 		if ( msg ) {
 			msg_consume(msg, consumerConfig);
+                        misses = 0;
+                } else {
+                        misses++;
 		}
 	}
 
